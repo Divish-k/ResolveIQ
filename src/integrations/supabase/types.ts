@@ -3360,7 +3360,369 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      resolveiq_actions: {
+        Row: {
+          action_type: string
+          amount: number | null
+          authorization_mode: string
+          case_id: string
+          created_at: string
+          executed_at: string | null
+          execution_detail: Json
+          id: string
+          label: string
+          status: string
+          verification: Json
+          verification_status: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          action_type: string
+          amount?: number | null
+          authorization_mode: string
+          case_id: string
+          created_at?: string
+          executed_at?: string | null
+          execution_detail?: Json
+          id?: string
+          label: string
+          status?: string
+          verification?: Json
+          verification_status?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          action_type?: string
+          amount?: number | null
+          authorization_mode?: string
+          case_id?: string
+          created_at?: string
+          executed_at?: string | null
+          execution_detail?: Json
+          id?: string
+          label?: string
+          status?: string
+          verification?: Json
+          verification_status?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resolveiq_actions_case_id_fkey"
+            columns: ["case_id"]
+            referencedRelation: "resolveiq_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resolveiq_agent_findings: {
+        Row: {
+          agent: string
+          case_id: string
+          confidence: number
+          created_at: string
+          evidence_found: Json
+          finding: string
+          id: string
+          ran_at: string
+          status: string
+        }
+        Insert: {
+          agent: string
+          case_id: string
+          confidence?: number
+          created_at?: string
+          evidence_found?: Json
+          finding: string
+          id?: string
+          ran_at?: string
+          status?: string
+        }
+        Update: {
+          agent?: string
+          case_id?: string
+          confidence?: number
+          created_at?: string
+          evidence_found?: Json
+          finding?: string
+          id?: string
+          ran_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resolveiq_agent_findings_case_id_fkey"
+            columns: ["case_id"]
+            referencedRelation: "resolveiq_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resolveiq_audit_log: {
+        Row: {
+          action: string
+          actor: string
+          case_id: string | null
+          created_at: string
+          detail: Json
+          id: string
+        }
+        Insert: {
+          action: string
+          actor?: string
+          case_id?: string | null
+          created_at?: string
+          detail?: Json
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor?: string
+          case_id?: string | null
+          created_at?: string
+          detail?: Json
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resolveiq_audit_log_case_id_fkey"
+            columns: ["case_id"]
+            referencedRelation: "resolveiq_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resolveiq_cases: {
+        Row: {
+          case_number: string
+          category: string
+          confidence: number | null
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string | null
+          description: string
+          escalated: boolean
+          id: string
+          incident_at: string
+          location: string | null
+          merchant: string | null
+          order_id: string
+          scenario_key: string
+          severity: string
+          stage: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          case_number: string
+          category: string
+          confidence?: number | null
+          created_at?: string
+          customer_email: string
+          customer_name: string
+          customer_phone?: string | null
+          description: string
+          escalated?: boolean
+          id?: string
+          incident_at: string
+          location?: string | null
+          merchant?: string | null
+          order_id: string
+          scenario_key: string
+          severity?: string
+          stage?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          case_number?: string
+          category?: string
+          confidence?: number | null
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string | null
+          description?: string
+          escalated?: boolean
+          id?: string
+          incident_at?: string
+          location?: string | null
+          merchant?: string | null
+          order_id?: string
+          scenario_key?: string
+          severity?: string
+          stage?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      resolveiq_decisions: {
+        Row: {
+          case_id: string
+          confidence: number
+          created_at: string
+          decision_at: string
+          escalation_reason: string | null
+          escalation_required: boolean
+          id: string
+          policy_checks: Json
+          reasoning: string
+          recommended_actions: Json
+          risk_detail: string | null
+          risk_level: string
+        }
+        Insert: {
+          case_id: string
+          confidence: number
+          created_at?: string
+          decision_at?: string
+          escalation_reason?: string | null
+          escalation_required?: boolean
+          id?: string
+          policy_checks?: Json
+          reasoning: string
+          recommended_actions?: Json
+          risk_detail?: string | null
+          risk_level: string
+        }
+        Update: {
+          case_id?: string
+          confidence?: number
+          created_at?: string
+          decision_at?: string
+          escalation_reason?: string | null
+          escalation_required?: boolean
+          id?: string
+          policy_checks?: Json
+          reasoning?: string
+          recommended_actions?: Json
+          risk_detail?: string | null
+          risk_level?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resolveiq_decisions_case_id_fkey"
+            columns: ["case_id"]
+            referencedRelation: "resolveiq_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resolveiq_evidence: {
+        Row: {
+          case_id: string
+          confidence: number
+          created_at: string
+          description: string
+          detail: Json
+          event_at: string | null
+          finding: string | null
+          id: string
+          source: string
+          status: string
+          title: string
+          verified_at: string | null
+        }
+        Insert: {
+          case_id: string
+          confidence?: number
+          created_at?: string
+          description: string
+          detail?: Json
+          event_at?: string | null
+          finding?: string | null
+          id?: string
+          source: string
+          status?: string
+          title: string
+          verified_at?: string | null
+        }
+        Update: {
+          case_id?: string
+          confidence?: number
+          created_at?: string
+          description?: string
+          detail?: Json
+          event_at?: string | null
+          finding?: string | null
+          id?: string
+          source?: string
+          status?: string
+          title?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resolveiq_evidence_case_id_fkey"
+            columns: ["case_id"]
+            referencedRelation: "resolveiq_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resolveiq_settings: {
+        Row: {
+          key: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      resolveiq_timeline_events: {
+        Row: {
+          case_id: string
+          created_at: string
+          description: string
+          event_at: string
+          flagged: boolean
+          id: string
+          role: string
+          sort_order: number
+          source: string
+          title: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          description: string
+          event_at: string
+          flagged?: boolean
+          id?: string
+          role?: string
+          sort_order?: number
+          source: string
+          title: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          description?: string
+          event_at?: string
+          flagged?: boolean
+          id?: string
+          role?: string
+          sort_order?: number
+          source?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resolveiq_timeline_events_case_id_fkey"
+            columns: ["case_id"]
+            referencedRelation: "resolveiq_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

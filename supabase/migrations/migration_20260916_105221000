@@ -1,0 +1,3 @@
+-- Remove duplicate pending action rows for the seeded resolved case RIQ-2026-0134
+-- (leftovers from a seed logic bug; the completed+verified rows are kept).
+delete from resolveiq_actions where case_id = '480bb963-f091-4fa9-adee-a4a947231056' and status = 'pending';

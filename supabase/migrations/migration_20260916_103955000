@@ -1,0 +1,7 @@
+delete from resolveiq_actions where case_id = '357677b3-e13f-4000-b616-7b1168ad99ec';
+delete from resolveiq_decisions where case_id = '357677b3-e13f-4000-b616-7b1168ad99ec';
+delete from resolveiq_agent_findings where case_id = '357677b3-e13f-4000-b616-7b1168ad99ec';
+delete from resolveiq_evidence where case_id = '357677b3-e13f-4000-b616-7b1168ad99ec';
+delete from resolveiq_timeline_events where case_id = '357677b3-e13f-4000-b616-7b1168ad99ec';
+delete from resolveiq_audit_log where case_id = '357677b3-e13f-4000-b616-7b1168ad99ec' and created_at > '2026-09-14T12:00:00Z';
+update resolveiq_cases set status = 'new', stage = 'understand', confidence = null, escalated = false, updated_at = now() where id = '357677b3-e13f-4000-b616-7b1168ad99ec';
