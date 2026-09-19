@@ -945,40 +945,63 @@ async function createCase(sb: SB, body: Record<string, unknown>) {
     if (!body[key]) throw new Error(`Missing required field: ${key}`);
   }
   const year = new Date().getFullYear();
-  const { data: existing } = await sb
-    .from("resolveiq_cases")
-    .select("case_number")
-    .like("case_number", `RIQ-${year}-%`)
-    .order("case_number", { ascending: false })
-    .limit(1);
-  const nextSeq =
-    existing && existing.length > 0
-      ? Number((existing[0] as { case_number: string }).case_number.split("-").pop()) + 1
-      : 142;
-  const caseNumber = `RIQ-${year}-${String(nextSeq).padStart(5, "0")}`;
   const scenario = scenarioForCategory(String(body.category));
 
-  const { data: row, error } = await sb
-    .from("resolveiq_cases")
-    .insert({
-      case_number: caseNumber,
-      customer_name: String(body.customerName),
-      customer_email: String(body.customerEmail),
-      customer_phone: body.customerPhone ? String(body.customerPhone) : null,
-      order_id: String(body.orderId),
-      merchant: body.merchant ? String(body.merchant) : null,
-      category: String(body.category),
-      description: String(body.description),
-      incident_at: String(body.incidentAt),
-      location: body.location ? String(body.location) : null,
-      severity: String(body.severity ?? "medium"),
-      status: "new",
-      stage: "understand",
-      scenario_key: scenario.key,
-    })
-    .select()
-    .single();
-  if (error || !row) throw new Error(error?.message ?? "Failed to create case");
+  // Build a unique case number by taking the max NUMERIC sequence for the year.
+  // String-sorting mixes 4-digit and 5-digit IDs ("0144" > "00145"), which is the
+  // root cause of duplicate case numbers — so parse and compare numerically.
+  async function nextCaseNumber(): Promise<string> {
+    const { data: existing } = await sb
+      .from("resolveiq_cases")
+      .select("case_number")
+      .like("case_number", `RIQ-${year}-%`);
+    let maxSeq = 141;
+    for (const row of (existing ?? []) as Array<{ case_number: string }>) {
+      const n = Number(row.case_number.split("-").pop());
+      if (!Number.isNaN(n) && n > maxSeq) maxSeq = n;
+    }
+    return `RIQ-${year}-${String(maxSeq + 1).padStart(5, "0")}`;
+  }
+
+  // Retry the insert a few times with a freshly generated number to stay safe
+  // under concurrent submissions; never mask the error.
+  let caseNumber = await nextCaseNumber();
+  let row: Record<string, unknown> | null = null;
+  let insertError: string | null = null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await sb
+      .from("resolveiq_cases")
+      .insert({
+        case_number: caseNumber,
+        customer_name: String(body.customerName),
+        customer_email: String(body.customerEmail),
+        customer_phone: body.customerPhone ? String(body.customerPhone) : null,
+        order_id: String(body.orderId),
+        merchant: body.merchant ? String(body.merchant) : null,
+        category: String(body.category),
+        description: String(body.description),
+        incident_at: String(body.incidentAt),
+        location: body.location ? String(body.location) : null,
+        severity: String(body.severity ?? "medium"),
+        status: "new",
+        stage: "understand",
+        scenario_key: scenario.key,
+      })
+      .select()
+      .single();
+    if (res.error) {
+      insertError = res.error.message;
+      if (res.error.message.includes("duplicate key") && res.error.message.includes("case_number")) {
+        // Collision → regenerate and retry.
+        caseNumber = await nextCaseNumber();
+        continue;
+      }
+      break;
+    }
+    row = res.data as Record<string, unknown>;
+    break;
+  }
+  if (!row) throw new Error(insertError ?? "Failed to create case");
 
   await audit(sb, (row as { id: string }).id, "Operator", "Complaint submitted — case created", {
     case_number: caseNumber,
