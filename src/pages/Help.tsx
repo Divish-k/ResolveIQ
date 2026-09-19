@@ -1,5 +1,6 @@
 import {
   BookCheck,
+  Bot,
   CreditCard,
   CloudSun,
   GitBranch,
@@ -12,6 +13,18 @@ import {
   Truck,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/StatCard";
+
+// Qwen is the LLM intelligence layer AROUND the ACAN workflow — ACAN remains
+// the deterministic multi-agent investigation engine; Qwen understands,
+// synthesizes and explains the structured information ACAN produces.
+const LAYERED_FLOW = [
+  { layer: "Qwen", step: "Complaint Understanding / Classification", desc: "Qwen reads the customer complaint and produces a summary, classification, priority hint and customer-facing message." },
+  { layer: "ACAN", step: "Multi-Agent Investigation", desc: "Six specialized agents (Order, Payment, Logistics, Merchant, Policy, Risk) query simulated enterprise systems and produce structured findings." },
+  { layer: "ACAN", step: "Structured Findings + Evidence", desc: "Agent findings, evidence items with verification statuses, and contradictions are stored on the case." },
+  { layer: "Qwen", step: "Investigation Synthesis + Evidence / Contradiction Analysis", desc: "Qwen synthesizes the ACAN findings and evidence into a plain-language narrative: supporting evidence, contradictions, root cause, risk and recommended action." },
+  { layer: "ACAN", step: "Arbitration / Decision", desc: "The deterministic arbitration engine combines evidence, policy checks, confidence, risk and authorization limits into a decision — or escalates." },
+  { layer: "Qwen", step: "Customer-Friendly Resolution Explanation", desc: "Qwen turns the approved decision into a clear, empathetic message for the customer." },
+];
 
 const STAGES = [
   { n: 1, name: "Understand", desc: "Parse the complaint, resolve the customer, order and category, and route the case." },
@@ -76,6 +89,42 @@ export default function Help() {
           ))}
         </div>
       </div>
+
+      {/* Qwen × ACAN layered architecture */}
+      <section>
+        <h3 className="mb-3 text-lg font-bold text-white">
+          How Qwen and ACAN work together
+        </h3>
+        <p className="mb-4 max-w-3xl text-sm text-white/60">
+          ACAN remains the deterministic multi-agent investigation engine. Qwen is
+          the LLM intelligence layer <span className="font-semibold text-cyan-300">around</span> it —
+          Qwen understands, synthesizes and explains the structured information that
+          ACAN produces. Qwen never replaces the agents or the arbitration logic.
+        </p>
+        <div className="overflow-hidden rounded-xl border border-white/10">
+          {LAYERED_FLOW.map((f, i) => (
+            <div
+              key={f.step}
+              className={`flex flex-wrap items-start gap-3 p-4 ${i % 2 === 0 ? "bg-white/[0.04]" : "bg-transparent"}`}
+            >
+              <span
+                className={`mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${
+                  f.layer === "Qwen"
+                    ? "bg-cyan-400/15 text-cyan-300"
+                    : "bg-indigo-400/15 text-indigo-300"
+                }`}
+              >
+                {f.layer === "Qwen" ? <Bot className="h-3 w-3" /> : <Scale className="h-3 w-3" />}
+                {f.layer}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-white">{f.step}</div>
+                <div className="mt-0.5 text-[13px] leading-relaxed text-white/60">{f.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Pipeline */}
       <section>

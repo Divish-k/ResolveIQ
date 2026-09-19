@@ -38,7 +38,7 @@ export default function Entry() {
         </p>
 
         <div className="mt-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-4 py-1.5 text-xs font-medium text-cyan-200">
-          Customer → Business → ACAN Investigation → Qwen Synthesis → Resolution
+          Qwen Understanding → ACAN Agents → Qwen Synthesis → Arbitration → Qwen Explanation
         </div>
 
         {/* Two options */}
