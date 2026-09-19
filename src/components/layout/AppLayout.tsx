@@ -9,20 +9,24 @@ import { useEnsureSeed } from "@/lib/api";
 import { BrandMark, NavLinks, SidebarFooter } from "./Navigation";
 
 const PAGE_TITLES: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/submit": "New Complaint",
-  "/cases": "My Cases",
-  "/investigation": "Investigation",
-  "/evidence": "Evidence",
-  "/analytics": "Analytics",
-  "/help": "Help",
+  "/business": "Operations Overview",
+  "/business/incoming": "Incoming Complaints",
+  "/business/cases": "Active Cases",
+  "/business/queue": "Priority Queue",
+  "/business/investigations": "Investigations",
+  "/business/agents": "ACAN Agents",
+  "/business/evidence": "Evidence",
+  "/business/decisions": "Decisions",
+  "/business/resolutions": "Resolutions",
+  "/business/analytics": "Analytics",
+  "/business/settings": "Settings",
 };
 
 function titleFor(pathname: string): string {
   const exact = PAGE_TITLES[pathname];
   if (exact) return exact;
-  if (pathname.startsWith("/cases/")) return "Investigation Case";
-  return "ResolveIQ";
+  if (pathname.startsWith("/business/cases/")) return "Case Management";
+  return "ResolveIQ Business";
 }
 
 function TopBar() {
@@ -65,7 +69,7 @@ function TopBar() {
           className="relative hidden md:block"
           onSubmit={(e) => {
             e.preventDefault();
-            if (search.trim()) navigate(`/cases?search=${encodeURIComponent(search.trim())}`);
+            if (search.trim()) navigate(`/business/cases?search=${encodeURIComponent(search.trim())}`);
           }}
         >
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />

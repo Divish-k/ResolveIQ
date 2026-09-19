@@ -3662,6 +3662,40 @@ export type Database = {
           },
         ]
       }
+      resolveiq_qwen: {
+        Row: {
+          analysis_type: string
+          case_id: string
+          created_at: string
+          id: string
+          model: string
+          result: Json
+        }
+        Insert: {
+          analysis_type: string
+          case_id: string
+          created_at?: string
+          id?: string
+          model: string
+          result?: Json
+        }
+        Update: {
+          analysis_type?: string
+          case_id?: string
+          created_at?: string
+          id?: string
+          model?: string
+          result?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resolveiq_qwen_case_id_fkey"
+            columns: ["case_id"]
+            referencedRelation: "resolveiq_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resolveiq_settings: {
         Row: {
           key: string

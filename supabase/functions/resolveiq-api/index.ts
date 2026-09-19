@@ -186,6 +186,176 @@ function avg(arr: number[]): number {
   return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
 }
 
+// ── Qwen AI layer — Qwen is the ONLY LLM. Results are cached per case so each
+//    analysis is generated at most once and reused on every later request.
+const AI_MODEL = "alibaba/qwen-3.8-max";
+const AI_ENDPOINT = "https://api.enter.pro/code/api/v1/ai/chat/completions";
+const AI_PROJECT_HEADER = "2d24f4ea26b9405daf2f0c93418c2488";
+const AI_SECRET = Deno.env.get("AI_API_TOKEN_2d24f4ea26b9") ?? "";
+
+const SYSTEM_COMPLAINT = `You are the complaint-understanding module of ResolveIQ, a dispute-resolution platform.
+Analyse the customer complaint and return STRICT JSON with exactly these keys:
+{"summary": "...", "classification": "...", "priority_hint": "low|medium|high", "customer_message": "..."}
+Be concise, factual, and customer-friendly. Do not invent facts not present in the complaint.`;
+
+const SYSTEM_SYNTHESIS = `You are the investigation-synthesis module of ResolveIQ.
+You are given structured multi-agent investigation results (agent findings, evidence with verification status, contradictions, decision).
+Synthesize them into STRICT JSON with exactly these keys:
+{"summary": "...", "supporting_evidence": ["..."], "contradicting_evidence": ["..."], "root_cause": "...", "confidence_explanation": "...", "risk": "low|medium|high", "recommended_action": "..."}
+Base your synthesis ONLY on the provided data. Do not invent evidence. Be concise.`;
+
+const SYSTEM_RESOLUTION = `You are the resolution-communication module of ResolveIQ.
+Given a decided case, produce STRICT JSON with exactly these keys:
+{"resolution_summary": "...", "customer_message": "...", "resolution_details": "..."}
+The customer_message must be clear, empathetic and easy to understand for a non-technical customer.
+Base everything ONLY on the provided case data. Be concise.`;
+
+async function callQwen(system: string, user: string): Promise<string> {
+  if (!AI_SECRET) throw new Error("Qwen AI token is not configured");
+  const response = await fetch(AI_ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${AI_SECRET}`,
+      "Content-Type": "application/json",
+      "X-Session-ID": "resolveiq-" + crypto.randomUUID(),
+      "X-Enter-Project-ID": AI_PROJECT_HEADER,
+    },
+    body: JSON.stringify({
+      model: AI_MODEL,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      stream: false,
+      temperature: 0.2,
+      max_tokens: 900,
+    }),
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    let message = `Qwen service error (${response.status})`;
+    try {
+      const err = JSON.parse(text);
+      message = err.error?.message ?? message;
+    } catch {
+      // keep default
+    }
+    throw new Error(message);
+  }
+  try {
+    const data = JSON.parse(text);
+    return (data.choices?.[0]?.message?.content ?? "").trim();
+  } catch {
+    throw new Error("Qwen returned an unparseable response");
+  }
+}
+
+function parseJsonResult(text: string): Record<string, unknown> {
+  const cleaned = text.replace(/```json|```/g, "").trim();
+  try {
+    return JSON.parse(cleaned) as Record<string, unknown>;
+  } catch {
+    return { text };
+  }
+}
+
+async function getQwenCached(
+  sb: SB,
+  caseId: string,
+  type: string,
+): Promise<Record<string, unknown> | null> {
+  const { data } = await sb
+    .from("resolveiq_qwen")
+    .select("*")
+    .eq("case_id", caseId)
+    .eq("analysis_type", type)
+    .maybeSingle();
+  if (!data) return null;
+  const row = data as { result: Record<string, unknown> };
+  return row.result ?? null;
+}
+
+async function storeQwen(
+  sb: SB,
+  caseId: string,
+  type: string,
+  result: Record<string, unknown>,
+): Promise<void> {
+  await sb.from("resolveiq_qwen").upsert(
+    { case_id: caseId, analysis_type: type, model: AI_MODEL, result },
+    { onConflict: "case_id,analysis_type" },
+  );
+}
+
+function compactCaseContext(c: Record<string, unknown>): string {
+  return [
+    `Case: ${c.case_number}`,
+    `Category: ${c.category}`,
+    `Complaint: ${c.description}`,
+    `Order: ${c.order_id}`,
+    `Severity: ${c.severity}`,
+    `Location: ${c.location ?? "n/a"}`,
+    `Incident: ${c.incident_at}`,
+  ].join("\n");
+}
+
+async function qwenAnalyze(sb: SB, caseId: string, type: string) {
+  const cached = await getQwenCached(sb, caseId, type);
+  if (cached) return { cached: true, model: AI_MODEL, result: cached };
+
+  const c = await getCaseRow(sb, caseId);
+  if (!c) throw new Error("Case not found");
+  const scenario = scenarios[c.scenario_key as string] ?? null;
+
+  let result: Record<string, unknown>;
+  if (type === "complaint_understanding") {
+    const text = await callQwen(SYSTEM_COMPLAINT, compactCaseContext(c));
+    result = parseJsonResult(text);
+  } else if (type === "investigation_synthesis" || type === "resolution_explanation") {
+    const [findingsRes, evidenceRes, decisionRes] = await Promise.all([
+      sb.from("resolveiq_agent_findings").select("*").eq("case_id", caseId),
+      sb.from("resolveiq_evidence").select("*").eq("case_id", caseId),
+      sb.from("resolveiq_decisions").select("*").eq("case_id", caseId).order("decision_at", { ascending: false }).limit(1),
+    ]);
+    const findings = (findingsRes.data ?? []) as Array<{ agent: string; finding: string; confidence: number }>;
+    const evidence = (evidenceRes.data ?? []) as Array<{ source: string; title: string; status: string; confidence: number; finding: string | null }>;
+    const decision = decisionRes.data?.[0] as
+      | { recommended_actions: unknown; reasoning: string; confidence: number; risk_level: string }
+      | undefined;
+
+    if (type === "investigation_synthesis" && findings.length === 0) {
+      throw new Error("Investigation not complete — run ACAN investigation first");
+    }
+
+    const context = [
+      compactCaseContext(c),
+      "",
+      "AGENT FINDINGS:",
+      ...findings.map((f) => `- ${f.agent}: ${f.finding} (confidence ${f.confidence}%)`),
+      "",
+      "EVIDENCE:",
+      ...evidence.map((e) => `- [${e.status}] ${e.source} · ${e.title}: ${e.finding ?? e.status} (confidence ${e.confidence}%)`),
+      "",
+      decision
+        ? `DECISION: ${JSON.stringify(decision.recommended_actions)} | reasoning: ${decision.reasoning} | confidence ${decision.confidence}% | risk ${decision.risk_level}`
+        : "DECISION: none yet",
+    ].join("\n");
+
+    const text = await callQwen(
+      type === "investigation_synthesis" ? SYSTEM_SYNTHESIS : SYSTEM_RESOLUTION,
+      context,
+    );
+    result = parseJsonResult(text);
+  } else {
+    throw new Error(`Unknown analysis type: ${type}`);
+  }
+
+  await storeQwen(sb, caseId, type, result);
+  await audit(sb, caseId, "Qwen", `Qwen analysis generated: ${type}`, { model: AI_MODEL });
+  void scenario;
+  return { cached: false, model: AI_MODEL, result };
+}
+
 // Step 2 — investigation + reconstruction
 async function runInvestigation(sb: SB, caseId: string) {
   const c = await getCaseRow(sb, caseId);
@@ -753,6 +923,15 @@ const CATEGORY_TO_SCENARIO: Record<string, string> = {
   "Billing — Unexpected Charge": "billing_error",
   "Delivery — Not Received (Signed POD)": "signed_delivery_dispute",
   "Damaged on Arrival": "damaged_goods",
+  // Customer-facing categories map onto the same investigation scenarios
+  "Payment Issue": "double_charge_dispute",
+  "Delivery Issue": "grocery_delivery_disrupted",
+  "Wrong Item": "wrong_item_shipped",
+  "Damaged Item": "damaged_goods",
+  "Missing Item": "grocery_delivery_disrupted",
+  "Refund Issue": "double_charge_dispute",
+  "Service Issue": "billing_error",
+  "Other": "grocery_delivery_disrupted",
 };
 
 function scenarioForCategory(category: string): Scenario {
@@ -776,7 +955,7 @@ async function createCase(sb: SB, body: Record<string, unknown>) {
     existing && existing.length > 0
       ? Number((existing[0] as { case_number: string }).case_number.split("-").pop()) + 1
       : 142;
-  const caseNumber = `RIQ-${year}-${String(nextSeq).padStart(4, "0")}`;
+  const caseNumber = `RIQ-${year}-${String(nextSeq).padStart(5, "0")}`;
   const scenario = scenarioForCategory(String(body.category));
 
   const { data: row, error } = await sb
@@ -806,7 +985,17 @@ async function createCase(sb: SB, body: Record<string, unknown>) {
     category: body.category,
     severity: body.severity ?? "medium",
   });
-  return { case: row, case_number: caseNumber, scenario: scenario.key };
+
+  // Best-effort Qwen complaint understanding (generated once, cached, reused).
+  // Never blocks case creation if Qwen is unavailable.
+  let qwen = null;
+  try {
+    qwen = await qwenAnalyze(sb, (row as { id: string }).id, "complaint_understanding");
+  } catch (err) {
+    console.error("Qwen complaint understanding failed:", (err as Error).message);
+  }
+
+  return { case: row, case_number: caseNumber, scenario: scenario.key, qwen };
 }
 
 // ---------- Get / list ----------
@@ -817,14 +1006,21 @@ async function getCase(sb: SB, body: Record<string, unknown>) {
   if (!row) throw new Error("Case not found");
   const caseId = row.id as string;
 
-  const [evidence, timeline, findings, decisions, actions, auditRows] = await Promise.all([
+  const [evidence, timeline, findings, decisions, actions, auditRows, qwenRows] = await Promise.all([
     sb.from("resolveiq_evidence").select("*").eq("case_id", caseId).order("event_at", { ascending: true }),
     sb.from("resolveiq_timeline_events").select("*").eq("case_id", caseId).order("event_at", { ascending: true }),
     sb.from("resolveiq_agent_findings").select("*").eq("case_id", caseId).order("ran_at", { ascending: true }),
     sb.from("resolveiq_decisions").select("*").eq("case_id", caseId).order("decision_at", { ascending: false }).limit(1),
     sb.from("resolveiq_actions").select("*").eq("case_id", caseId).order("created_at", { ascending: true }),
     sb.from("resolveiq_audit_log").select("*").eq("case_id", caseId).order("created_at", { ascending: false }).limit(50),
+    sb.from("resolveiq_qwen").select("*").eq("case_id", caseId),
   ]);
+
+  const qwen = (qwenRows.data ?? []).reduce<Record<string, Record<string, unknown>>>((acc, q) => {
+    const row = q as { analysis_type: string; result: Record<string, unknown>; model: string; created_at: string };
+    acc[row.analysis_type] = { ...row.result, model: row.model, generated_at: row.created_at };
+    return acc;
+  }, {});
 
   return {
     case: row,
@@ -834,6 +1030,7 @@ async function getCase(sb: SB, body: Record<string, unknown>) {
     decision: decisions.data?.[0] ?? null,
     actions: actions.data ?? [],
     audit: auditRows.data ?? [],
+    qwen,
     settings: await getSettings(sb),
   };
 }
@@ -843,7 +1040,7 @@ async function listCases(sb: SB, body: Record<string, unknown>) {
   const search = body.search ? String(body.search).toLowerCase() : undefined;
   let query = sb
     .from("resolveiq_cases")
-    .select("id, case_number, customer_name, order_id, category, severity, status, stage, confidence, escalated, created_at, updated_at")
+    .select("id, case_number, customer_name, customer_email, order_id, category, description, severity, status, stage, confidence, escalated, created_at, updated_at")
     .order("created_at", { ascending: false });
   if (status) query = query.eq("status", status);
   const { data, error } = await query;
@@ -861,18 +1058,30 @@ async function listCases(sb: SB, body: Record<string, unknown>) {
 
 // ---------- Analytics ----------
 async function analytics(sb: SB) {
-  const [casesRes, evidenceRes, actionsRes, decisionsRes, auditRes] = await Promise.all([
+  const [casesRes, evidenceRes, actionsRes, decisionsRes, auditRes, findingsRes, casesAllRes] = await Promise.all([
     sb.from("resolveiq_cases").select("id, status, escalated, created_at"),
     sb.from("resolveiq_evidence").select("status"),
     sb.from("resolveiq_actions").select("action_type, executed_at"),
     sb.from("resolveiq_decisions").select("case_id, confidence, decision_at"),
     sb.from("resolveiq_audit_log").select("created_at"),
+    sb.from("resolveiq_agent_findings").select("case_id, agent, finding, confidence, ran_at").order("ran_at", { ascending: false }).limit(30),
+    sb.from("resolveiq_cases").select("id, case_number"),
   ]);
   const cases = (casesRes.data ?? []) as Array<Record<string, unknown>>;
   const evidence = (evidenceRes.data ?? []) as Array<{ status: string }>;
   const actions = (actionsRes.data ?? []) as Array<{ action_type: string; executed_at: string | null }>;
   const decisions = (decisionsRes.data ?? []) as Array<{ case_id: string; confidence: number; decision_at: string }>;
   const auditRows = auditRes.data ?? [];
+  const findings = (findingsRes.data ?? []) as Array<{ case_id: string; agent: string; finding: string; confidence: number; ran_at: string }>;
+  const caseNumbers = Object.fromEntries((casesAllRes.data ?? []).map((r) => [r.id, r.case_number]));
+
+  const agentActivity = findings.map((f) => ({
+    agent: f.agent,
+    finding: f.finding,
+    confidence: Math.round(f.confidence),
+    ran_at: f.ran_at,
+    case_number: caseNumbers[f.case_id] ?? "",
+  }));
 
   const statusCounts = cases.reduce<Record<string, number>>((acc, c) => {
     acc[String(c.status)] = (acc[String(c.status)] ?? 0) + 1;
@@ -924,10 +1133,11 @@ async function analytics(sb: SB) {
     confidenceBuckets,
     evidenceStatus,
     evidenceConflicts: evidenceStatus["contradicted"] ?? 0,
-      escalatedCount: cases.filter((c) => c.escalated === true).length,
-      resolvedCount: cases.filter((c) => String(c.status) === "resolved").length,
+    escalatedCount: cases.filter((c) => c.escalated === true).length,
+    resolvedCount: cases.filter((c) => String(c.status) === "resolved").length,
     auditEvents: auditRows.length,
     threshold: settings.confidence_threshold,
+    agentActivity,
   };
 }
 
@@ -1350,6 +1560,13 @@ Deno.serve(async (req) => {
         return json(await escalateCase(sb, caseId(), body.reason ? String(body.reason) : undefined));
       case "analytics":
         return json(await analytics(sb));
+      case "qwen-analyze": {
+        const type = String(body.type ?? "");
+        if (!["complaint_understanding", "investigation_synthesis", "resolution_explanation"].includes(type)) {
+          return json({ error: `Unknown qwen type: ${type}` }, 400);
+        }
+        return json(await qwenAnalyze(sb, caseId(), type));
+      }
       case "ping":
         return json({ ok: true, service: "ResolveIQ API" });
       default:

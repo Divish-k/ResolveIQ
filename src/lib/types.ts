@@ -124,6 +124,24 @@ export interface Settings {
   auto_authorization_limit: number;
 }
 
+export interface QwenAnalysis {
+  summary?: string;
+  classification?: string;
+  priority_hint?: string;
+  customer_message?: string;
+  supporting_evidence?: string[];
+  contradicting_evidence?: string[];
+  root_cause?: string;
+  confidence_explanation?: string;
+  risk?: string;
+  recommended_action?: string;
+  resolution_summary?: string;
+  resolution_details?: string;
+  model?: string;
+  generated_at?: string;
+  text?: string;
+}
+
 export interface CaseDetail {
   case: CaseRow;
   evidence: EvidenceItem[];
@@ -132,15 +150,25 @@ export interface CaseDetail {
   decision: Decision | null;
   actions: ResolutionAction[];
   audit: AuditEntry[];
+  qwen?: Partial<Record<"complaint_understanding" | "investigation_synthesis" | "resolution_explanation", QwenAnalysis>>;
   settings: Settings;
+}
+
+export interface CreateCaseResponse {
+  case: CaseRow;
+  case_number: string;
+  scenario: string;
+  qwen: { cached: boolean; model: string; result: QwenAnalysis } | null;
 }
 
 export interface CaseListItem {
   id: string;
   case_number: string;
   customer_name: string;
+  customer_email: string | null;
   order_id: string;
   category: string;
+  description: string;
   severity: Severity;
   status: string;
   stage: string;
@@ -163,6 +191,7 @@ export interface AnalyticsData {
   resolvedCount: number;
   auditEvents: number;
   threshold: number;
+  agentActivity: { agent: string; finding: string; confidence: number; ran_at: string; case_number: string }[];
 }
 
 export interface Operator {
@@ -170,4 +199,10 @@ export interface Operator {
   email: string;
   role: string;
   signedInAt: string;
+}
+
+export interface CustomerIdentity {
+  name: string;
+  email: string;
+  joinedAt: string;
 }

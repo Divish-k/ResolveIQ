@@ -1,0 +1,12 @@
+-- ResolveIQ: Qwen analysis cache (credit-optimized: generate once, reuse forever)
+create table if not exists resolveiq_qwen (
+  id uuid primary key default gen_random_uuid(),
+  case_id uuid not null references resolveiq_cases(id) on delete cascade,
+  analysis_type text not null check (analysis_type in ('complaint_understanding','investigation_synthesis','resolution_explanation')),
+  model text not null,
+  result jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  unique (case_id, analysis_type)
+);
+create index if not exists idx_qwen_case on resolveiq_qwen(case_id);
+alter table resolveiq_qwen enable row level security;

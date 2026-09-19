@@ -5,7 +5,8 @@ import type {
   AuditEntry,
   CaseDetail,
   CaseListItem,
-  CaseRow,
+  CreateCaseResponse,
+  QwenAnalysis,
   Settings,
 } from "./types";
 
@@ -73,10 +74,24 @@ export function useCreateCase() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: Record<string, unknown>) =>
-      call<{ case: CaseRow; case_number: string; scenario: string }>("create-case", input),
+      call<CreateCaseResponse>("create-case", input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cases"] });
       qc.invalidateQueries({ queryKey: ["analytics"] });
+    },
+  });
+}
+
+// ── Qwen (Qwen is the ONLY LLM; results are cached server-side per case) ─────
+export type QwenType = "complaint_understanding" | "investigation_synthesis" | "resolution_explanation";
+
+export function useQwenAnalyze() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { caseId: string; type: QwenType }) =>
+      call<{ cached: boolean; model: string; result: QwenAnalysis }>("qwen-analyze", args),
+    onSuccess: (_data, args) => {
+      qc.invalidateQueries({ queryKey: ["case", args.caseId] });
     },
   });
 }

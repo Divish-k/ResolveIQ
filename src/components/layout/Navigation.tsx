@@ -2,12 +2,16 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   Activity,
   BarChart3,
-  ClipboardPlus,
+  Bot,
+  CheckCircle2,
+  FileCheck2,
   FolderKanban,
-  HelpCircle,
+  Gauge,
+  Inbox,
   LayoutDashboard,
   LogOut,
   Scale,
+  Settings,
   ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,13 +20,17 @@ import { initials } from "@/lib/format";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const NAV_ITEMS = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/submit", label: "New Complaint", icon: ClipboardPlus },
-  { to: "/cases", label: "My Cases", icon: FolderKanban },
-  { to: "/investigation", label: "Investigation", icon: Activity },
-  { to: "/evidence", label: "Evidence", icon: Scale },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/help", label: "Help", icon: HelpCircle },
+  { to: "/business", label: "Overview", icon: LayoutDashboard },
+  { to: "/business/incoming", label: "Incoming Complaints", icon: Inbox },
+  { to: "/business/cases", label: "Active Cases", icon: FolderKanban },
+  { to: "/business/queue", label: "Priority Queue", icon: Gauge },
+  { to: "/business/investigations", label: "Investigations", icon: Activity },
+  { to: "/business/agents", label: "ACAN Agents", icon: Bot },
+  { to: "/business/evidence", label: "Evidence", icon: Scale },
+  { to: "/business/decisions", label: "Decisions", icon: FileCheck2 },
+  { to: "/business/resolutions", label: "Resolutions", icon: CheckCircle2 },
+  { to: "/business/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/business/settings", label: "Settings", icon: Settings },
 ];
 
 export function BrandMark({ size = "md" }: { size?: "md" | "lg" }) {
@@ -40,15 +48,16 @@ export function BrandMark({ size = "md" }: { size?: "md" | "lg" }) {
 
 export function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav className="flex flex-col gap-1">
+    <nav className="flex flex-col gap-0.5">
       {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}
           to={to}
+          end={to === "/business"}
           onClick={onNavigate}
           className={({ isActive }) =>
             cn(
-              "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
               isActive
                 ? "bg-sidebar-accent text-white shadow-sm"
                 : "text-sidebar-foreground/70 hover:bg-white/5 hover:text-white",

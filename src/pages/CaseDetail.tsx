@@ -13,6 +13,7 @@ import { EvidencePanel } from "@/components/case/EvidencePanel";
 import { DecisionPanel } from "@/components/case/DecisionPanel";
 import { HistoryPanel } from "@/components/case/HistoryPanel";
 import { OverviewPanel } from "@/components/case/OverviewPanel";
+import { QwenSynthesisPanel } from "@/components/case/QwenSynthesisPanel";
 
 function smartDefaultTab(stage: string): string {
   switch (stage) {
@@ -33,7 +34,7 @@ function smartDefaultTab(stage: string): string {
   }
 }
 
-const TABS = ["overview", "investigation", "timeline", "evidence", "decision", "history"];
+const TABS = ["overview", "investigation", "timeline", "evidence", "decision", "qwen", "history"];
 
 export default function CaseDetail() {
   const { id } = useParams<{ id: string }>();
@@ -125,6 +126,9 @@ export default function CaseDetail() {
           <TabsTrigger value="decision">
             Decision{hasDecision ? " ✓" : ""}
           </TabsTrigger>
+          <TabsTrigger value="qwen">
+            Qwen Synthesis{data.qwen?.investigation_synthesis ? " ✓" : ""}
+          </TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
@@ -146,6 +150,10 @@ export default function CaseDetail() {
 
         <TabsContent value="decision">
           <DecisionPanel detail={data} />
+        </TabsContent>
+
+        <TabsContent value="qwen">
+          <QwenSynthesisPanel detail={data} />
         </TabsContent>
 
         <TabsContent value="history">
