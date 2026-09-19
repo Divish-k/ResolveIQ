@@ -1,10 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Building2, Scale, UserRound } from "lucide-react";
-import { useOperator } from "@/context/operator";
 
 export default function Entry() {
-  const { operator } = useOperator();
-
   return (
     <div className="bg-gradient-subtle relative flex min-h-screen flex-col items-center overflow-hidden px-4 py-10">
       <div
@@ -44,7 +41,7 @@ export default function Entry() {
         {/* Two options */}
         <div className="mt-10 grid w-full gap-6 md:grid-cols-2">
           <Link
-            to="/customer"
+            to="/login?role=customer"
             className="group bg-card shadow-card flex flex-col rounded-2xl border border-slate-200/80 p-8 transition-all hover:-translate-y-1 hover:border-cyan-300"
           >
             <div className="bg-gradient-to-br from-cyan-500/15 to-blue-500/5 flex h-14 w-14 items-center justify-center rounded-2xl text-cyan-600">
@@ -61,7 +58,7 @@ export default function Entry() {
           </Link>
 
           <Link
-            to={operator ? "/business" : "/login"}
+            to="/login?role=company"
             className="group bg-card shadow-card flex flex-col rounded-2xl border border-slate-200/80 p-8 transition-all hover:-translate-y-1 hover:border-blue-300"
           >
             <div className="bg-gradient-to-br from-blue-500/15 to-indigo-500/5 flex h-14 w-14 items-center justify-center rounded-2xl text-blue-600">

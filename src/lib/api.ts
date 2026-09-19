@@ -65,7 +65,7 @@ export const useActivity = () =>
     queryFn: () =>
       call<{
         audit: AuditEntry[];
-        cases: Record<string, { id: string; case_number: string; customer_name: string }>;
+        cases: Record<string, { id: string; case_number: string; customer_name: string; customer_email: string | null }>;
       }>("list-audit"),
   });
 

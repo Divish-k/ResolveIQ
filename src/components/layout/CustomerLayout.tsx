@@ -46,7 +46,10 @@ export default function CustomerLayout() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="relative flex min-h-screen flex-col bg-slate-50">
+      {/* Full-viewport light backdrop so the navy body never shows at edges/gutter */}
+      <div className="bg-slate-50 fixed inset-0 -z-10" />
+
       {/* Top bar */}
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4">

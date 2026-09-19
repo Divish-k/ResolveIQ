@@ -1539,7 +1539,7 @@ Deno.serve(async (req) => {
           ...new Set((auditRows ?? []).map((r) => (r as { case_id: string | null }).case_id).filter(Boolean)),
         ] as string[];
         const { data: caseRows } = caseIds.length
-          ? await sb.from("resolveiq_cases").select("id, case_number, customer_name").in("id", caseIds)
+          ? await sb.from("resolveiq_cases").select("id, case_number, customer_name, customer_email").in("id", caseIds)
           : { data: [] };
         const caseMap = Object.fromEntries((caseRows ?? []).map((r) => [r.id, r]));
         return json({ audit: auditRows ?? [], cases: caseMap });

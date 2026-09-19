@@ -22,6 +22,10 @@ export function friendlyAction(action: string): string {
   if (action.includes("Escalated")) return "Case escalated for review";
   if (action.includes("Executed")) return "Resolution applied";
   if (action.includes("arbitration")) return "Decision in progress";
+  if (action.includes("Qwen analysis generated: complaint_understanding"))
+    return "Complaint received and under review";
+  if (action.includes("Qwen analysis generated")) return "Investigation summary prepared";
+  if (action.includes("Qwen")) return "Investigation update";
   return action;
 }
 
