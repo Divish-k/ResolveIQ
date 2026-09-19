@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Check, CheckCircle2, FileQuestion, Loader2, ShieldAlert } from "lucide-react";
 import { useCaseDetail } from "@/lib/api";
@@ -20,7 +20,7 @@ const STEPS = [
 function currentStep(stage: string): number {
   switch (stage) {
     case "understand":
-      return 0;
+      return 1; // complaint submitted → "Case Received" is the active step
     case "investigate":
     case "reconstruct":
       return 2;
@@ -36,20 +36,18 @@ function currentStep(stage: string): number {
   }
 }
 
+const STEP_HINTS = [
+  "",
+  "Your case has been received by ResolveIQ.",
+  "ResolveIQ is investigating what happened.",
+  "Evidence is being checked for accuracy.",
+  "A fair decision is being prepared.",
+  "Your resolution will appear here.",
+];
+
 export default function TrackCase() {
   const { id } = useParams<{ id: string }>();
   const { data, isLoading, isError } = useCaseDetail(id ?? "");
-  const [revealed, setRevealed] = useState(0);
-
-  useEffect(() => {
-    if (!data) return;
-    const target = currentStep(data.case.stage) + 1;
-    setRevealed(0);
-    for (let i = 0; i <= target; i++) {
-      window.setTimeout(() => setRevealed(i + 1), 260 * (i + 1));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.case.id]);
 
   const resolution = useMemo(() => {
     if (!data) return null;
@@ -108,7 +106,7 @@ export default function TrackCase() {
       </Link>
 
       {/* Case header */}
-      <div className="bg-gradient-to-br from-cyan-600 to-blue-700 rounded-2xl p-6 text-white shadow-lg">
+      <div className="rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-700 p-6 text-white shadow-lg">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-xs font-medium uppercase tracking-wider text-cyan-200">
@@ -141,16 +139,22 @@ export default function TrackCase() {
       <div className="bg-card rounded-xl border border-slate-200/80 p-6 shadow-sm">
         <ol className="space-y-0">
           {STEPS.map((s, i) => {
-            const done = revealed > i + 1 || i < step;
-            const active = revealed === i + 1 || i === step;
-            const waiting = i > step;
+            const done = i < step || (isResolved && i <= step);
+            const active = i === step && !done && !isEscalated;
+            const waiting = !done && !active;
             return (
-              <li key={s.key} className="relative flex items-start gap-4 pb-5 last:pb-0">
+              <li
+                key={s.key}
+                className="animate-in-up relative flex items-start gap-4 pb-5 last:pb-0"
+                style={{ animationDelay: `${i * 130}ms` }}
+              >
                 {i < STEPS.length - 1 && (
                   <span
                     className={cn(
                       "absolute left-[15px] top-7 h-full w-px",
-                      i < step ? "bg-emerald-400" : "bg-slate-200",
+                      i < step || (isResolved && i < STEPS.length - 1)
+                        ? "bg-emerald-400"
+                        : "bg-slate-200",
                     )}
                   />
                 )}
@@ -160,9 +164,8 @@ export default function TrackCase() {
                     done
                       ? "bg-emerald-500 text-white"
                       : active
-                        ? "bg-cyan-600 text-white"
+                        ? "animate-pulse-soft bg-cyan-600 text-white"
                         : "bg-slate-100 text-slate-400",
-                    active && !done && "animate-pulse-soft",
                   )}
                 >
                   {done ? <Check className="h-4 w-4" /> : i + 1}
@@ -176,16 +179,8 @@ export default function TrackCase() {
                   >
                     {s.label}
                   </div>
-                  {waiting && (
-                    <div className="text-xs text-slate-400">
-                      {i === 2
-                        ? "ResolveIQ is investigating what happened."
-                        : i === 3
-                          ? "Evidence is being checked for accuracy."
-                          : i === 4
-                            ? "A fair decision is being prepared."
-                            : "Your resolution will appear here."}
-                    </div>
+                  {waiting && STEP_HINTS[i] && (
+                    <div className="text-xs text-slate-400">{STEP_HINTS[i]}</div>
                   )}
                 </div>
               </li>

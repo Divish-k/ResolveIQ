@@ -20,6 +20,7 @@ import CustomerDashboard from "@/pages/CustomerDashboard";
 import RaiseComplaint from "@/pages/RaiseComplaint";
 import MyComplaints from "@/pages/MyComplaints";
 import TrackCase from "@/pages/TrackCase";
+import TrackCaseRedirect from "@/pages/TrackCaseRedirect";
 import CustomerNotifications from "@/pages/CustomerNotifications";
 import CustomerProfile from "@/pages/CustomerProfile";
 import NotFound from "./pages/NotFound";
@@ -44,7 +45,7 @@ export const routers = [
       { index: true, element: <CustomerDashboard /> },
       { path: "raise", element: <RaiseComplaint /> },
       { path: "complaints", element: <MyComplaints /> },
-      { path: "track", element: <Navigate to="/customer/complaints" replace /> },
+      { path: "track", element: <TrackCaseRedirect /> },
       { path: "track/:id", element: <TrackCase /> },
       { path: "notifications", element: <CustomerNotifications /> },
       { path: "profile", element: <CustomerProfile /> },

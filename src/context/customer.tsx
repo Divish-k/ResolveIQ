@@ -13,6 +13,7 @@ const DEFAULT_IDENTITY: CustomerIdentity = {
 interface CustomerContextValue {
   customer: CustomerIdentity;
   updateCustomer: (patch: Partial<Pick<CustomerIdentity, "name" | "email">>) => void;
+  signOut: () => void;
   isDemoIdentity: boolean;
 }
 
@@ -39,6 +40,10 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         const next = { ...customer, ...patch };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
         setCustomer(next);
+      },
+      signOut: () => {
+        localStorage.removeItem(STORAGE_KEY);
+        setCustomer({ ...DEFAULT_IDENTITY, joinedAt: new Date().toISOString() });
       },
     }),
     [customer],
