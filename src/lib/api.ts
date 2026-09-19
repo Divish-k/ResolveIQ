@@ -15,7 +15,20 @@ async function call<T>(action: string, body: Record<string, unknown> = {}): Prom
     body: { action, ...body },
   });
   if (error) {
-    throw new Error(`ResolveIQ API (${action}): ${error.message}`);
+    // Surface the REAL backend error message instead of supabase-js's generic
+    // "Edge Function returned a non-2xx status code".
+    let detail = error.message;
+    try {
+      const res = (error as { context?: Response }).context;
+      if (res && typeof res.text === "function") {
+        const text = await res.text();
+        const parsed = JSON.parse(text) as { error?: string };
+        if (parsed?.error) detail = parsed.error;
+      }
+    } catch {
+      // keep the default message
+    }
+    throw new Error(`ResolveIQ API (${action}): ${detail}`);
   }
   const payload = data as { error?: string } | null;
   if (payload?.error) {
