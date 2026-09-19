@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRight, Building2, Fingerprint, Scale, UserRound } from "lucide-react";
+import { ArrowRight, Building2, Fingerprint, Scale, Sparkles, UserRound } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +24,7 @@ export default function Login() {
   const [tab, setTab] = useState<"customer" | "company">(
     roleParam === "company" ? "company" : "customer",
   );
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
 
   // Customer fields
   const [custName, setCustName] = useState(customer.name);
@@ -39,13 +41,19 @@ export default function Login() {
   useEffect(() => {
     if (roleParam === "customer") setTab("customer");
     if (roleParam === "company") setTab("company");
-  }, [roleParam]);
+    if (params.get("mode") === "signup") setMode("signup");
+  }, [roleParam, params]);
 
   const enterCustomer = () => {
-    if (!custName.trim() || !custEmail.trim()) return;
+    if (!custName.trim() || !custEmail.trim()) {
+      toast.error("Please enter your name and email.");
+      return;
+    }
     setEntering(true);
     window.setTimeout(() => {
       updateCustomer({ name: custName.trim(), email: custEmail.trim() });
+      if (mode === "signup") toast.success("Account created — welcome to ResolveIQ!");
+      else toast.success(`Welcome back, ${custName.trim().split(" ")[0]}!`);
       navigate("/customer", { replace: true });
     }, 350);
   };
@@ -54,6 +62,8 @@ export default function Login() {
     setEntering(true);
     window.setTimeout(() => {
       signIn({ name: opName.trim() || "Demo Operator", email: opEmail, role: opRole });
+      if (mode === "signup") toast.success("Company account created — welcome to the operations console!");
+      else toast.success("Signed in to the operations console");
       navigate(from ?? "/business", { replace: true });
     }, 350);
   };
@@ -105,10 +115,37 @@ export default function Login() {
         {/* Right: role login */}
         <div className="bg-card shadow-card w-full rounded-2xl border border-slate-200/80 p-8">
           <div className="mb-1 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900">Sign in to ResolveIQ</h2>
+            <h2 className="text-lg font-bold text-slate-900">
+              {mode === "signin" ? "Sign in to ResolveIQ" : "Create your ResolveIQ account"}
+            </h2>
             <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700">
               Build Bengaluru · Demo
             </span>
+          </div>
+
+          {/* Sign in / Sign up toggle */}
+          <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1.5">
+            <button
+              onClick={() => setMode("signin")}
+              className={cn(
+                "flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+                mode === "signin" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700",
+              )}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => setMode("signup")}
+              className={cn(
+                "flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+                mode === "signup"
+                  ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-700",
+              )}
+            >
+              <Sparkles className="h-4 w-4" />
+              Sign Up
+            </button>
           </div>
 
           {/* Role selector */}
@@ -139,7 +176,9 @@ export default function Login() {
           {tab === "customer" ? (
             <div className="mt-6 space-y-4">
               <p className="text-sm text-slate-500">
-                Raise and track your complaints. Enter the name and email you used to raise them.
+                {mode === "signin"
+                  ? "Raise and track your complaints. Enter the name and email you used to raise them."
+                  : "Create a free account to raise and track your complaints."}
               </p>
               <div className="space-y-1.5">
                 <Label htmlFor="cname" className="text-[13px] text-slate-600">
@@ -165,9 +204,21 @@ export default function Login() {
                 disabled={entering}
               >
                 <UserRound className="h-4 w-4" />
-                {entering ? "Entering…" : "Continue to Customer Dashboard"}
+                {entering
+                  ? "Please wait…"
+                  : mode === "signup"
+                    ? "Create Account"
+                    : "Continue to Customer Dashboard"}
                 {!entering && <ArrowRight className="h-4 w-4" />}
               </Button>
+              <button
+                onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+                className="w-full text-center text-[12px] font-medium text-cyan-700 hover:underline"
+              >
+                {mode === "signin"
+                  ? "New to ResolveIQ? Create an account"
+                  : "Already have an account? Sign in"}
+              </button>
               <p className="text-center text-[11px] text-slate-400">
                 Demo access — no credentials required
               </p>
@@ -175,8 +226,9 @@ export default function Login() {
           ) : (
             <div className="mt-6 space-y-4">
               <p className="text-sm text-slate-500">
-                Enterprise operations console for the company team — investigate and
-                resolve complaints.
+                {mode === "signin"
+                  ? "Enterprise operations console for the company team — investigate and resolve complaints."
+                  : "Create the company account used to investigate and resolve complaints."}
               </p>
               <div className="space-y-1.5">
                 <Label htmlFor="name" className="text-[13px] text-slate-600">
@@ -212,9 +264,17 @@ export default function Login() {
                 disabled={entering}
               >
                 <Fingerprint className="h-4 w-4" />
-                {entering ? "Entering…" : "Enter Business Dashboard"}
+                {entering ? "Please wait…" : mode === "signup" ? "Create Company Account" : "Enter Business Dashboard"}
                 {!entering && <ArrowRight className="h-4 w-4" />}
               </Button>
+              <button
+                onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+                className="w-full text-center text-[12px] font-medium text-blue-700 hover:underline"
+              >
+                {mode === "signin"
+                  ? "New company? Create an account"
+                  : "Already have an account? Sign in"}
+              </button>
               <p className="text-center text-[11px] text-slate-400">
                 Demo access — simulated company workspace
               </p>
