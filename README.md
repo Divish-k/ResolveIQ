@@ -147,5 +147,3 @@ To deploy, open your Enter.pro project and click "Publish"
 Your app will automatically build and go live at your production URL.
 
 ---
-
-✨ Keep prompting, keep building — Enter.pro handles the rest.
